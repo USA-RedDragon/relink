@@ -3,7 +3,6 @@ package relink
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"path/filepath"
 	"slices"
 
@@ -23,11 +22,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	grp := errgroup.Group{}
-	if cfg.HashJobs > math.MaxInt {
-		grp.SetLimit(math.MaxInt)
-	} else {
-		grp.SetLimit(int(cfg.HashJobs))
-	}
+	grp.SetLimit(cfg.HashJobs)
 
 	hashedSourceFiles := xsync.NewMap[string, []byte]()
 	hashedTargetFiles := xsync.NewMap[string, []byte]()
@@ -36,7 +31,7 @@ func Run(cfg *config.Config) error {
 
 	for file := range Walk(absSource) {
 		grp.Go(func() error {
-			hash, err := HashFile(file)
+			hash, err := HashFile(file, cfg.BufferSize)
 			if err != nil {
 				slog.Error("failed to hash file", "file", file, "error", err)
 				return err
@@ -54,7 +49,7 @@ func Run(cfg *config.Config) error {
 
 	for file := range Walk(absTarget) {
 		grp.Go(func() error {
-			hash, err := HashFile(file)
+			hash, err := HashFile(file, cfg.BufferSize)
 			if err != nil {
 				slog.Error("failed to hash file", "file", file, "error", err)
 				return err

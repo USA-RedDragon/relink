@@ -8,7 +8,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func HashFile(filePath string) (ret []byte, err error) {
+func HashFile(filePath string, bufferSize int) (ret []byte, err error) {
 	b2b, err := blake2b.New512(nil)
 	if err != nil {
 		return
@@ -21,7 +21,7 @@ func HashFile(filePath string) (ret []byte, err error) {
 	defer f.Close()
 
 	for {
-		buf := make([]byte, 4096)
+		buf := make([]byte, bufferSize)
 		readN, err := f.Read(buf)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err

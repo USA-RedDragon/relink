@@ -121,9 +121,10 @@ func TestRun(t *testing.T) {
 
 		// Run relink
 		cfg := &config.Config{
-			Source:   sourceDir,
-			Target:   targetDir,
-			HashJobs: 4,
+			Source:     sourceDir,
+			Target:     targetDir,
+			HashJobs:   4,
+			BufferSize: 4096,
 		}
 		err = relink.Run(cfg)
 		if err != nil {

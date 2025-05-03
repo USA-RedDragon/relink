@@ -13,7 +13,7 @@ import (
 )
 
 func NewCommand(version, commit string) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "relink",
 		Version: fmt.Sprintf("%s - %s", version, commit),
 		Annotations: map[string]string{
@@ -24,6 +24,8 @@ func NewCommand(version, commit string) *cobra.Command {
 		SilenceErrors:     true,
 		DisableAutoGenTag: true,
 	}
+	cmd.AddCommand(NewBufferBenchCommand(version, commit))
+	return cmd
 }
 
 func runRoot(cmd *cobra.Command, _ []string) error {

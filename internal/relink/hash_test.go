@@ -9,6 +9,8 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
+const testBuffer = 4096
+
 func TestHashFileRegular(t *testing.T) {
 	t.Parallel()
 	// Create a temporary directory for this test
@@ -36,7 +38,7 @@ func TestHashFileRegular(t *testing.T) {
 	expectedSum := expectedHash.Sum(nil)
 
 	// Test HashFile
-	actualHash, err := relink.HashFile(filePath)
+	actualHash, err := relink.HashFile(filePath, testBuffer)
 	if err != nil {
 		t.Fatalf("HashFile failed: %v", err)
 	}
@@ -69,7 +71,7 @@ func TestHashFileEmpty(t *testing.T) {
 	}
 	expectedSum := expectedHash.Sum(nil)
 
-	actualHash, err := relink.HashFile(filePath)
+	actualHash, err := relink.HashFile(filePath, testBuffer)
 	if err != nil {
 		t.Fatalf("HashFile failed: %v", err)
 	}
@@ -109,7 +111,7 @@ func TestHashFileLarge(t *testing.T) {
 	}
 	expectedSum := expectedHash.Sum(nil)
 
-	actualHash, err := relink.HashFile(filePath)
+	actualHash, err := relink.HashFile(filePath, testBuffer)
 	if err != nil {
 		t.Fatalf("HashFile failed: %v", err)
 	}
@@ -146,7 +148,7 @@ func TestHashFileSpecialChars(t *testing.T) {
 	}
 	expectedSum := expectedHash.Sum(nil)
 
-	actualHash, err := relink.HashFile(filePath)
+	actualHash, err := relink.HashFile(filePath, testBuffer)
 	if err != nil {
 		t.Fatalf("HashFile failed: %v", err)
 	}
@@ -168,7 +170,7 @@ func TestHashFileNotExist(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_, err = relink.HashFile(filepath.Join(tmpDir, "nonexistent.txt"))
+	_, err = relink.HashFile(filepath.Join(tmpDir, "nonexistent.txt"), testBuffer)
 	if err == nil {
 		t.Error("Expected error for nonexistent file, got nil")
 	}
@@ -190,7 +192,7 @@ func TestHashFilePermissionDenied(t *testing.T) {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
-	_, err = relink.HashFile(filePath)
+	_, err = relink.HashFile(filePath, testBuffer)
 	if err == nil {
 		t.Error("Expected error for permission denied, got nil")
 	}
