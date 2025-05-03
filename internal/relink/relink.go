@@ -29,8 +29,8 @@ func Run(cfg *config.Config) error {
 		grp.SetLimit(int(cfg.HashJobs))
 	}
 
-	hashedSourceFiles := xsync.NewMapOf[string, []byte]()
-	hashedTargetFiles := xsync.NewMapOf[string, []byte]()
+	hashedSourceFiles := xsync.NewMap[string, []byte]()
+	hashedTargetFiles := xsync.NewMap[string, []byte]()
 
 	slog.Info("Walking source files")
 
