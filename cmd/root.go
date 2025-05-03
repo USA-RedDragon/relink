@@ -7,6 +7,7 @@ import (
 
 	"github.com/USA-RedDragon/configulator"
 	"github.com/USA-RedDragon/relink/internal/config"
+	"github.com/USA-RedDragon/relink/internal/relink"
 	"github.com/lmittmann/tint"
 	"github.com/spf13/cobra"
 )
@@ -51,5 +52,5 @@ func runRoot(cmd *cobra.Command, _ []string) error {
 	}
 	slog.SetDefault(logger)
 
-	return nil
+	return relink.Run(cfg)
 }
