@@ -3,6 +3,7 @@ package relink
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"path/filepath"
 	"slices"
 
@@ -22,7 +23,11 @@ func Run(cfg *config.Config) error {
 	}
 
 	grp := errgroup.Group{}
-	grp.SetLimit(int(cfg.HashJobs))
+	if cfg.HashJobs > math.MaxInt {
+		grp.SetLimit(math.MaxInt)
+	} else {
+		grp.SetLimit(int(cfg.HashJobs))
+	}
 
 	hashedSourceFiles := xsync.NewMapOf[string, []byte]()
 	hashedTargetFiles := xsync.NewMapOf[string, []byte]()

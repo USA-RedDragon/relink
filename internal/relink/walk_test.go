@@ -33,7 +33,7 @@ func setupTestDir(t *testing.T) (string, func()) {
 		} else {
 			err = os.MkdirAll(filepath.Dir(path), 0755)
 			if err == nil {
-				err = os.WriteFile(path, []byte("test"), 0644)
+				err = os.WriteFile(path, []byte("test"), 0600)
 			}
 		}
 		if err != nil {
@@ -109,7 +109,7 @@ func TestWalk(t *testing.T) {
 
 		// Create a file with the same name as the root directory
 		rootFile := tmpDir + ".txt"
-		err := os.WriteFile(rootFile, []byte("test"), 0644)
+		err := os.WriteFile(rootFile, []byte("test"), 0600)
 		if err != nil {
 			t.Fatalf("Failed to create root file: %v", err)
 		}

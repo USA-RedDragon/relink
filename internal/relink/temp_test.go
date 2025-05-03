@@ -3,6 +3,7 @@ package relink_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/USA-RedDragon/relink/internal/relink"
@@ -40,7 +41,6 @@ func TestGetSafeTempFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -78,7 +78,7 @@ func TestGetSafeTempFile(t *testing.T) {
 
 				// Verify the prefix is correct
 				base := filepath.Base(got)
-				if tt.prefix != "" && !filepath.HasPrefix(base, tt.prefix) {
+				if tt.prefix != "" && !strings.HasPrefix(base, tt.prefix) {
 					t.Errorf("getSafeTempFile() returned path with wrong prefix, got %s, want prefix %s", base, tt.prefix)
 				}
 			}

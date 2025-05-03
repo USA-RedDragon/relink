@@ -14,9 +14,13 @@ func Walk(root string) iter.Seq2[string, error] {
 			return
 		}
 
-		filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if d.IsDir() {
 				return nil
+			}
+
+			if err != nil {
+				return err
 			}
 
 			if path == root {
@@ -30,5 +34,9 @@ func Walk(root string) iter.Seq2[string, error] {
 
 			return nil
 		})
+
+		if err != nil {
+			yield("", err)
+		}
 	}
 }

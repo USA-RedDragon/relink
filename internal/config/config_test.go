@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -90,7 +91,7 @@ func TestConfig_Validate(t *testing.T) {
 			if tt.wantErr != nil {
 				if err == nil {
 					t.Errorf("Validate() error = nil, want %v", tt.wantErr)
-				} else if err != tt.wantErr {
+				} else if !errors.Is(err, tt.wantErr) {
 					t.Errorf("Validate() error = %v, want %v", err, tt.wantErr)
 				}
 			} else if err != nil {
@@ -133,7 +134,7 @@ func TestLogLevelConstants(t *testing.T) {
 				if err != nil {
 					t.Errorf("Validate() unexpected error = %v", err)
 				}
-			} else if err != config.ErrBadLogLevel {
+			} else if !errors.Is(err, config.ErrBadLogLevel) {
 				t.Errorf("Validate() error = %v, want %v", err, config.ErrBadLogLevel)
 			}
 		})

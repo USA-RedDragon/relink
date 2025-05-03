@@ -1,6 +1,7 @@
 package relink
 
 import (
+	"errors"
 	"io"
 	"os"
 
@@ -22,7 +23,7 @@ func HashFile(filePath string) (ret []byte, err error) {
 	for {
 		buf := make([]byte, 4096)
 		readN, err := f.Read(buf)
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
 		}
 		if readN == 0 {

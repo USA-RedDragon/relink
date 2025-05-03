@@ -18,7 +18,7 @@ func setupTestFiles(t *testing.T) (string, string, string) {
 	// Create source file with some content
 	sourcePath := filepath.Join(tempDir, "source.txt")
 	sourceContent := []byte("test content")
-	if err := os.WriteFile(sourcePath, sourceContent, 0644); err != nil {
+	if err := os.WriteFile(sourcePath, sourceContent, 0600); err != nil {
 		t.Fatalf("Failed to create source file: %v", err)
 	}
 
@@ -50,7 +50,6 @@ func TestAtomicLink_Success(t *testing.T) {
 		t.Error("Target file was not created")
 	}
 
-	// Verify both files have the same inode (they are hardlinked)
 	sourceInfo, err := os.Stat(sourcePath)
 	if err != nil {
 		t.Fatalf("Failed to stat source file: %v", err)
@@ -61,7 +60,7 @@ func TestAtomicLink_Success(t *testing.T) {
 	}
 
 	if !os.SameFile(sourceInfo, targetInfo) {
-		t.Error("Source and target files are not hardlinked")
+		t.Error("Source and target files are not hard linked")
 	}
 }
 

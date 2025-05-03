@@ -54,7 +54,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create source directory: %v", err)
 			}
-			err = os.WriteFile(sourcePath, []byte("test content"), 0644)
+			err = os.WriteFile(sourcePath, []byte("test content"), 0600)
 			if err != nil {
 				t.Fatalf("Failed to create source file: %v", err)
 			}
@@ -65,7 +65,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create target directory: %v", err)
 			}
-			err = os.WriteFile(targetPath, []byte("test content"), 0644)
+			err = os.WriteFile(targetPath, []byte("test content"), 0600)
 			if err != nil {
 				t.Fatalf("Failed to create target file: %v", err)
 			}
@@ -82,7 +82,6 @@ func TestRun(t *testing.T) {
 			t.Fatalf("Run failed: %v", err)
 		}
 
-		// Verify files are hardlinked
 		for _, file := range files {
 			sourcePath := filepath.Join(sourceDir, file)
 			targetPath := filepath.Join(targetDir, file)
@@ -97,7 +96,7 @@ func TestRun(t *testing.T) {
 			}
 
 			if !os.SameFile(sourceInfo, targetInfo) {
-				t.Errorf("Files %s and %s are not hardlinked", sourcePath, targetPath)
+				t.Errorf("Files %s and %s are not hard linked", sourcePath, targetPath)
 			}
 		}
 	})
@@ -111,11 +110,11 @@ func TestRun(t *testing.T) {
 		sourcePath := filepath.Join(sourceDir, "file.txt")
 		targetPath := filepath.Join(targetDir, "file.txt")
 
-		err := os.WriteFile(sourcePath, []byte("source content"), 0644)
+		err := os.WriteFile(sourcePath, []byte("source content"), 0600)
 		if err != nil {
 			t.Fatalf("Failed to create source file: %v", err)
 		}
-		err = os.WriteFile(targetPath, []byte("different content"), 0644)
+		err = os.WriteFile(targetPath, []byte("different content"), 0600)
 		if err != nil {
 			t.Fatalf("Failed to create target file: %v", err)
 		}
@@ -131,7 +130,6 @@ func TestRun(t *testing.T) {
 			t.Fatalf("Run failed: %v", err)
 		}
 
-		// Verify files are not hardlinked
 		sourceInfo, err := os.Stat(sourcePath)
 		if err != nil {
 			t.Fatalf("Failed to stat source file: %v", err)
@@ -142,7 +140,7 @@ func TestRun(t *testing.T) {
 		}
 
 		if os.SameFile(sourceInfo, targetInfo) {
-			t.Error("Files should not be hardlinked due to different content")
+			t.Error("Files should not be hard linked due to different content")
 		}
 	})
 }
