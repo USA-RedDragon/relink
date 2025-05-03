@@ -1,3 +1,5 @@
 # relink
 
+[![Release](https://github.com/USA-RedDragon/relink/actions/workflows/release.yaml/badge.svg)](https://github.com/USA-RedDragon/relink/actions/workflows/release.yaml) [![go.mod version](https://img.shields.io/github/go-mod/go-version/USA-RedDragon/relink.svg)](https://github.com/USA-RedDragon/relink) [![GoReportCard](https://goreportcard.com/badge/github.com/USA-RedDragon/relink)](https://goreportcard.com/report/github.com/USA-RedDragon/relink) [![License](https://badgen.net/github/license/USA-RedDragon/relink)](https://github.com/USA-RedDragon/relink/blob/main/LICENSE) [![Release](https://img.shields.io/github/release/USA-RedDragon/relink.svg)](https://github.com/USA-RedDragon/relink/releases/) [![codecov](https://codecov.io/gh/USA-RedDragon/relink/graph/badge.svg?token=pIx48ehUoJ)](https://codecov.io/gh/USA-RedDragon/relink)
+
 A simple utility to find duplicate files and replace them with hardlinks to save disk space. It recursively scans directories to identify files with identical content and creates hardlinks while preserving the original file attributes.
