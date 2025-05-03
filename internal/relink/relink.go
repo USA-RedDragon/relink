@@ -8,7 +8,7 @@ import (
 	"slices"
 
 	"github.com/USA-RedDragon/relink/internal/config"
-	"github.com/puzpuzpuz/xsync/v3"
+	"github.com/puzpuzpuz/xsync/v4"
 	"golang.org/x/sync/errgroup"
 )
 
