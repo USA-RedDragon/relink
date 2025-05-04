@@ -62,7 +62,7 @@ func runBufferBench(cmd *cobra.Command, _ []string) error {
 
 	for i, bufsize := range sizes {
 		start := time.Now()
-		if _, err := relink.HashFile(f.Name(), bufsize); err != nil {
+		if _, err := relink.HashFile(f.Name(), bufsize, nil); err != nil {
 			return fmt.Errorf("failed to hash file: %w", err)
 		}
 		duration := time.Since(start)

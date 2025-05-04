@@ -3,12 +3,14 @@ package relink
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sync/atomic"
 	"time"
 
 	"github.com/USA-RedDragon/relink/internal/config"
 	"github.com/USA-RedDragon/relink/internal/relink/cache"
+	"github.com/USA-RedDragon/relink/internal/utils"
 	"github.com/puzpuzpuz/xsync/v4"
 	"golang.org/x/sync/errgroup"
 )
@@ -48,14 +50,18 @@ func Run(cfg *config.Config) error {
 	slog.Info("Walking source files")
 
 	totalFiles := 0
+	totalSize := uint64(0)
 	var completedFiles atomic.Uint64
+	var completedSize atomic.Uint64
 
 	for file := range Walk(absSource) {
 		totalFiles++
+		fileSize := file.Info.Size()
+		totalSize += uint64(fileSize)
 		go func() {
 			grp.Go(func() error {
 				defer func() { completedFiles.Add(1) }()
-				relative, err := filepath.Rel(absSource, file)
+				relative, err := filepath.Rel(absSource, file.Path)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path: %w", err)
 				}
@@ -69,22 +75,38 @@ func Run(cfg *config.Config) error {
 					return nil
 				}
 
-				hash, err := HashFile(file, cfg.BufferSize)
-				if err != nil {
-					slog.Error("failed to hash file", "file", file, "error", err)
-					return err
-				}
+				readBytesChan := make(chan uint64)
+				wg := errgroup.Group{}
+				wg.Go(func() error {
+					hash, err := HashFile(file.Path, cfg.BufferSize, readBytesChan)
+					if err != nil {
+						slog.Error("failed to hash file", "file", file, "error", err)
+						return err
+					}
 
-				return cc.Put(relative, hash)
+					close(readBytesChan)
+
+					return cc.Put(relative, hash)
+				})
+
+				for {
+					select {
+					case readBytes, ok := <-readBytesChan:
+						if !ok {
+							return wg.Wait()
+						}
+						completedSize.Add(readBytes)
+					}
+				}
 			})
 		}()
 	}
 
 	for int(completedFiles.Load()) < totalFiles {
-		slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles)
+		slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 		time.Sleep(time.Second)
 	}
-	slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles)
+	slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 
 	err = grp.Wait()
 	if err != nil {
@@ -95,33 +117,56 @@ func Run(cfg *config.Config) error {
 	slog.Info("Walking target files")
 
 	totalFiles = 0
+	totalSize = 0
 	completedFiles.Store(0)
+	completedSize.Store(0)
 
 	for file := range Walk(absTarget) {
 		totalFiles++
+		if file.Info.Mode()&os.ModeSymlink != 0 {
+			slog.Debug("skipping symlink", "file", file)
+			continue
+		}
+		fileSize := file.Info.Size()
+		totalSize += uint64(fileSize)
 		go func() {
 			grp.Go(func() error {
 				defer func() { completedFiles.Add(1) }()
-				hash, err := HashFile(file, cfg.BufferSize)
-				if err != nil {
-					slog.Error("failed to hash file", "file", file, "error", err)
-					return err
+				readBytesChan := make(chan uint64)
+				wg := errgroup.Group{}
+				wg.Go(func() error {
+					hash, err := HashFile(file.Path, cfg.BufferSize, readBytesChan)
+					if err != nil {
+						slog.Error("failed to hash file", "file", file, "error", err)
+						return err
+					}
+					relative, err := filepath.Rel(absTarget, file.Path)
+					if err != nil {
+						return fmt.Errorf("failed to get relative path: %w", err)
+					}
+					close(readBytesChan)
+					hashedTargetFiles.Store(relative, hash)
+					return nil
+				})
+
+				for {
+					select {
+					case readBytes, ok := <-readBytesChan:
+						if !ok {
+							return wg.Wait()
+						}
+						completedSize.Add(readBytes)
+					}
 				}
-				relative, err := filepath.Rel(absTarget, file)
-				if err != nil {
-					return fmt.Errorf("failed to get relative path: %w", err)
-				}
-				hashedTargetFiles.Store(relative, hash)
-				return nil
 			})
 		}()
 	}
 
 	for int(completedFiles.Load()) < totalFiles {
-		slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles)
+		slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 		time.Sleep(time.Second)
 	}
-	slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles)
+	slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 
 	err = grp.Wait()
 	if err != nil {

@@ -71,7 +71,7 @@ func TestWalk(t *testing.T) {
 				t.Errorf("Unexpected error while walking: %v", err)
 				continue
 			}
-			foundFiles[path] = true
+			foundFiles[path.Path] = true
 		}
 
 		if len(foundFiles) != len(expectedFiles) {
@@ -121,7 +121,7 @@ func TestWalk(t *testing.T) {
 				t.Errorf("Unexpected error while walking: %v", err)
 				continue
 			}
-			if path == tmpDir {
+			if path.Path == tmpDir {
 				foundRoot = true
 			}
 		}

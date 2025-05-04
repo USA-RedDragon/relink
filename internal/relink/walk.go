@@ -7,15 +7,24 @@ import (
 	"path/filepath"
 )
 
-func Walk(root string) iter.Seq2[string, error] {
-	return func(yield func(string, error) bool) {
+type FileInfo struct {
+	Path string
+	Info fs.FileInfo
+}
+
+func Walk(root string) iter.Seq2[FileInfo, error] {
+	return func(yield func(FileInfo, error) bool) {
 		// Check if root exists before walking
 		if _, err := os.Stat(root); os.IsNotExist(err) {
 			return
 		}
 
-		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-			if d.IsDir() {
+		err := filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+			if info.IsDir() {
+				return nil
+			}
+
+			if info.Mode()&os.ModeSymlink != 0 {
 				return nil
 			}
 
@@ -28,7 +37,7 @@ func Walk(root string) iter.Seq2[string, error] {
 			}
 
 			absPath, err := filepath.Abs(path)
-			if !yield(absPath, err) {
+			if !yield(FileInfo{absPath, info}, err) {
 				return fs.SkipAll
 			}
 
@@ -36,7 +45,7 @@ func Walk(root string) iter.Seq2[string, error] {
 		})
 
 		if err != nil {
-			yield("", err)
+			yield(FileInfo{}, err)
 		}
 	}
 }
