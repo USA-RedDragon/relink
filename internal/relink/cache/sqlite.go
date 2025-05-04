@@ -45,7 +45,7 @@ func (s *SQLiteCache) Put(key string, value []byte) error {
 
 func (s *SQLiteCache) GetByHash(hash []byte) (string, error) {
 	var key string
-	err := s.db.QueryRow("SELECT key FROM cache WHERE value = ?", hash).Scan(&key)
+	err := s.db.QueryRow("SELECT key FROM cache WHERE value = ? LIMIT 1", hash).Scan(&key)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil
