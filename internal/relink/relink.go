@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"time"
 
 	"github.com/USA-RedDragon/relink/internal/config"
 	"github.com/USA-RedDragon/relink/internal/relink/cache"
@@ -45,56 +46,83 @@ func Run(cfg *config.Config) error {
 
 	slog.Info("Walking source files")
 
+	totalFiles := 0
+	completedFiles := 0
+
 	for file := range Walk(absSource) {
-		grp.Go(func() error {
-			relative, err := filepath.Rel(absSource, file)
-			if err != nil {
-				return fmt.Errorf("failed to get relative path: %w", err)
-			}
+		totalFiles++
+		go func() {
+			grp.Go(func() error {
+				defer func() { completedFiles++ }()
+				relative, err := filepath.Rel(absSource, file)
+				if err != nil {
+					return fmt.Errorf("failed to get relative path: %w", err)
+				}
 
-			// Check if the file is already in the cache
-			exists, err := cc.Exists(relative)
-			if err != nil {
-				return fmt.Errorf("failed to check if file exists in cache: %w", err)
-			}
-			if exists {
-				return nil
-			}
+				// Check if the file is already in the cache
+				exists, err := cc.Exists(relative)
+				if err != nil {
+					return fmt.Errorf("failed to check if file exists in cache: %w", err)
+				}
+				if exists {
+					return nil
+				}
 
-			hash, err := HashFile(file, cfg.BufferSize)
-			if err != nil {
-				slog.Error("failed to hash file", "file", file, "error", err)
-				return err
-			}
+				hash, err := HashFile(file, cfg.BufferSize)
+				if err != nil {
+					slog.Error("failed to hash file", "file", file, "error", err)
+					return err
+				}
 
-			return cc.Put(relative, hash)
-		})
+				return cc.Put(relative, hash)
+			})
+		}()
 	}
 
-	slog.Info("Walking target files")
-
-	for file := range Walk(absTarget) {
-		grp.Go(func() error {
-			hash, err := HashFile(file, cfg.BufferSize)
-			if err != nil {
-				slog.Error("failed to hash file", "file", file, "error", err)
-				return err
-			}
-			relative, err := filepath.Rel(absTarget, file)
-			if err != nil {
-				return fmt.Errorf("failed to get relative path: %w", err)
-			}
-			hashedTargetFiles.Store(relative, hash)
-			return nil
-		})
+	for completedFiles <= totalFiles {
+		slog.Info("Hashing source files", "completed", completedFiles, "total", totalFiles)
+		time.Sleep(time.Second)
 	}
-
-	slog.Info("Walking files completed")
-	slog.Info("Waiting for all hashing jobs to finish")
 
 	err = grp.Wait()
 	if err != nil {
 		slog.Error("failed to process files", "error", err)
+		return err
+	}
+
+	slog.Info("Walking target files")
+
+	totalFiles = 0
+	completedFiles = 0
+
+	for file := range Walk(absTarget) {
+		totalFiles++
+		go func() {
+			grp.Go(func() error {
+				defer func() { completedFiles++ }()
+				hash, err := HashFile(file, cfg.BufferSize)
+				if err != nil {
+					slog.Error("failed to hash file", "file", file, "error", err)
+					return err
+				}
+				relative, err := filepath.Rel(absTarget, file)
+				if err != nil {
+					return fmt.Errorf("failed to get relative path: %w", err)
+				}
+				hashedTargetFiles.Store(relative, hash)
+				return nil
+			})
+		}()
+	}
+
+	for completedFiles <= totalFiles {
+		slog.Info("Hashing target files", "completed", completedFiles, "total", totalFiles)
+		time.Sleep(time.Second)
+	}
+
+	err = grp.Wait()
+	if err != nil {
+		slog.Error("failed to process target files", "error", err)
 		return err
 	}
 
