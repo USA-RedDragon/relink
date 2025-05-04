@@ -11,7 +11,6 @@ import (
 	"github.com/USA-RedDragon/relink/internal/config"
 	"github.com/USA-RedDragon/relink/internal/relink/cache"
 	"github.com/USA-RedDragon/relink/internal/utils"
-	"github.com/puzpuzpuz/xsync/v4"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -44,8 +43,6 @@ func Run(cfg *config.Config) error {
 	default:
 		return fmt.Errorf("invalid cache type: %s", cfg.CacheType)
 	}
-
-	hashedTargetFiles := xsync.NewMap[string, []byte]()
 
 	slog.Info("Walking source files")
 
@@ -141,12 +138,23 @@ func Run(cfg *config.Config) error {
 						slog.Error("failed to hash file", "file", file, "error", err)
 						return err
 					}
-					relative, err := filepath.Rel(absTarget, file.Path)
-					if err != nil {
-						return fmt.Errorf("failed to get relative path: %w", err)
-					}
 					close(readBytesChan)
-					hashedTargetFiles.Store(relative, hash)
+
+					sourceRelative, err := cc.GetByHash(hash)
+					if err != nil {
+						return fmt.Errorf("failed to get hash from cache: %w", err)
+					}
+					if sourceRelative == "" {
+						return nil
+					}
+
+					sourceFile := filepath.Join(absSource, sourceRelative)
+					err = AtomicLink(sourceFile, file.Path)
+					if err != nil {
+						return fmt.Errorf("failed to create hardlink: %w", err)
+					}
+					slog.Info("file hashes match, hardlink created", "source", sourceFile, "target", file.Path)
+
 					return nil
 				})
 
@@ -175,26 +183,7 @@ func Run(cfg *config.Config) error {
 		return err
 	}
 
-	slog.Info("Hashing completed")
-	slog.Info("Comparing hashes")
-
-	for k, targetHash := range hashedTargetFiles.Range {
-		sourceRelative, err := cc.GetByHash(targetHash)
-		if err != nil {
-			return fmt.Errorf("failed to get hash from cache: %w", err)
-		}
-		if sourceRelative == "" {
-			continue
-		}
-
-		sourceFile := filepath.Join(absSource, sourceRelative)
-		targetFile := filepath.Join(absTarget, k)
-		err = AtomicLink(sourceFile, targetFile)
-		if err != nil {
-			return fmt.Errorf("failed to create hardlink: %w", err)
-		}
-		slog.Info("file hashes match, hardlink created", "source", sourceFile, "target", targetFile)
-	}
+	slog.Info("Hashing and hardlinking completed")
 
 	return nil
 }
