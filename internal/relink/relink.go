@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/USA-RedDragon/relink/internal/config"
@@ -47,13 +48,13 @@ func Run(cfg *config.Config) error {
 	slog.Info("Walking source files")
 
 	totalFiles := 0
-	completedFiles := 0
+	var completedFiles atomic.Uint64
 
 	for file := range Walk(absSource) {
 		totalFiles++
 		go func() {
 			grp.Go(func() error {
-				defer func() { completedFiles++ }()
+				defer func() { completedFiles.Add(1) }()
 				relative, err := filepath.Rel(absSource, file)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path: %w", err)
@@ -79,10 +80,11 @@ func Run(cfg *config.Config) error {
 		}()
 	}
 
-	for completedFiles <= totalFiles {
-		slog.Info("Hashing source files", "completed", completedFiles, "total", totalFiles)
+	for int(completedFiles.Load()) < totalFiles {
+		slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles)
 		time.Sleep(time.Second)
 	}
+	slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles)
 
 	err = grp.Wait()
 	if err != nil {
@@ -93,13 +95,13 @@ func Run(cfg *config.Config) error {
 	slog.Info("Walking target files")
 
 	totalFiles = 0
-	completedFiles = 0
+	completedFiles.Store(0)
 
 	for file := range Walk(absTarget) {
 		totalFiles++
 		go func() {
 			grp.Go(func() error {
-				defer func() { completedFiles++ }()
+				defer func() { completedFiles.Add(1) }()
 				hash, err := HashFile(file, cfg.BufferSize)
 				if err != nil {
 					slog.Error("failed to hash file", "file", file, "error", err)
@@ -115,10 +117,11 @@ func Run(cfg *config.Config) error {
 		}()
 	}
 
-	for completedFiles <= totalFiles {
-		slog.Info("Hashing target files", "completed", completedFiles, "total", totalFiles)
+	for int(completedFiles.Load()) < totalFiles {
+		slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles)
 		time.Sleep(time.Second)
 	}
+	slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles)
 
 	err = grp.Wait()
 	if err != nil {
