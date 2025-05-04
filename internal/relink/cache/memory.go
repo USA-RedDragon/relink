@@ -1,6 +1,10 @@
 package cache
 
-import "github.com/puzpuzpuz/xsync/v4"
+import (
+	"slices"
+
+	"github.com/puzpuzpuz/xsync/v4"
+)
 
 type MemoryCache struct {
 	cache *xsync.Map[string, []byte]
@@ -17,17 +21,19 @@ func (m *MemoryCache) Put(key string, value []byte) error {
 	return nil
 }
 
-func (m *MemoryCache) Get(key string) ([]byte, error) {
-	value, ok := m.cache.Load(key)
-	if !ok {
-		return nil, nil
+func (m *MemoryCache) GetByHash(hash []byte) (string, error) {
+	var foundKey string
+	m.cache.Range(func(key string, value []byte) bool {
+		if slices.Equal(value, hash) {
+			foundKey = key
+			return false // Stop iteration
+		}
+		return true // Continue iteration
+	})
+	if foundKey == "" {
+		return "", nil // Not found
 	}
-	return value, nil
-}
-
-func (m *MemoryCache) Delete(key string) error {
-	m.cache.Delete(key)
-	return nil
+	return foundKey, nil
 }
 
 func (m *MemoryCache) Exists(key string) (bool, error) {

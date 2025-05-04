@@ -13,12 +13,12 @@ func setupTestDirs(t *testing.T) (string, string, func()) {
 	t.Helper()
 
 	// Create temporary directories for source and target
-	sourceDir, err := os.MkdirTemp("", "relink-source-*")
+	sourceDir, err := os.MkdirTemp(".", "relink-source-*")
 	if err != nil {
 		t.Fatalf("Failed to create source temp dir: %v", err)
 	}
 
-	targetDir, err := os.MkdirTemp("", "relink-target-*")
+	targetDir, err := os.MkdirTemp(".", "relink-target-*")
 	if err != nil {
 		os.RemoveAll(sourceDir)
 		t.Fatalf("Failed to create target temp dir: %v", err)
@@ -41,20 +41,20 @@ func TestRun(t *testing.T) {
 		defer cleanup()
 
 		// Create identical files in both directories
-		files := []string{
-			"file1.txt",
-			"subdir/file2.txt",
-			"subdir/nested/file3.txt",
+		files := map[string]string{
+			"file1.txt":               "testing",
+			"subdir/file2.txt":        "another test",
+			"subdir/nested/file3.txt": "more tests",
 		}
 
-		for _, file := range files {
+		for file, contents := range files {
 			// Create source file
 			sourcePath := filepath.Join(sourceDir, file)
 			err := os.MkdirAll(filepath.Dir(sourcePath), 0755)
 			if err != nil {
 				t.Fatalf("Failed to create source directory: %v", err)
 			}
-			err = os.WriteFile(sourcePath, []byte("test content"), 0600)
+			err = os.WriteFile(sourcePath, []byte(contents), 0600)
 			if err != nil {
 				t.Fatalf("Failed to create source file: %v", err)
 			}
@@ -65,7 +65,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create target directory: %v", err)
 			}
-			err = os.WriteFile(targetPath, []byte("test content"), 0600)
+			err = os.WriteFile(targetPath, []byte(contents), 0600)
 			if err != nil {
 				t.Fatalf("Failed to create target file: %v", err)
 			}
@@ -73,17 +73,18 @@ func TestRun(t *testing.T) {
 
 		// Run relink
 		cfg := &config.Config{
-			Source:    sourceDir,
-			Target:    targetDir,
-			HashJobs:  4,
-			CacheType: config.CacheTypeMemory,
+			Source:     sourceDir,
+			Target:     targetDir,
+			HashJobs:   4,
+			CacheType:  config.CacheTypeMemory,
+			BufferSize: 4096,
 		}
 		err := relink.Run(cfg)
 		if err != nil {
 			t.Fatalf("Run failed: %v", err)
 		}
 
-		for _, file := range files {
+		for file, _ := range files {
 			sourcePath := filepath.Join(sourceDir, file)
 			targetPath := filepath.Join(targetDir, file)
 

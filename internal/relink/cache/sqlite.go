@@ -43,23 +43,16 @@ func (s *SQLiteCache) Put(key string, value []byte) error {
 	return err
 }
 
-func (s *SQLiteCache) Get(key string) ([]byte, error) {
-	var value []byte
-	err := s.db.QueryRow("SELECT value FROM cache WHERE key = ?", key).Scan(&value)
+func (s *SQLiteCache) GetByHash(hash []byte) (string, error) {
+	var key string
+	err := s.db.QueryRow("SELECT key FROM cache WHERE value = ?", hash).Scan(&key)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return "", nil
 		}
-		return nil, err
+		return "", err
 	}
-	return value, nil
-}
-
-func (s *SQLiteCache) Delete(key string) error {
-	s.writeMutex.Lock()
-	defer s.writeMutex.Unlock()
-	_, err := s.db.Exec("DELETE FROM cache WHERE key = ?", key)
-	return err
+	return key, nil
 }
 
 func (s *SQLiteCache) Exists(key string) (bool, error) {
