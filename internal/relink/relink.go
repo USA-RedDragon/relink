@@ -72,6 +72,7 @@ func Run(cfg *config.Config) error {
 					return fmt.Errorf("failed to check if file exists in cache: %w", err)
 				}
 				if exists {
+					completedSize.Add(uint64(fileSize))
 					return nil
 				}
 
