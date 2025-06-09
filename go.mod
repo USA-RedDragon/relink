@@ -5,7 +5,7 @@ go 1.24.4
 require (
 	github.com/USA-RedDragon/configulator v0.0.0-20250409213831-8d29f1f162be
 	github.com/glebarez/go-sqlite v1.22.0
-	github.com/lmittmann/tint v1.1.1
+	github.com/lmittmann/tint v1.1.2
 	github.com/puzpuzpuz/xsync/v4 v4.1.0
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/crypto v0.39.0
