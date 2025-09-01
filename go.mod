@@ -7,7 +7,7 @@ require (
 	github.com/glebarez/go-sqlite v1.22.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/puzpuzpuz/xsync/v4 v4.1.0
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.0
 	golang.org/x/crypto v0.41.0
 	golang.org/x/sync v0.16.0
 )
@@ -18,7 +18,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.8 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.37.6 // indirect
