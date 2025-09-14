@@ -6,7 +6,7 @@ require (
 	github.com/USA-RedDragon/configulator v0.0.0-20250409213831-8d29f1f162be
 	github.com/glebarez/go-sqlite v1.22.0
 	github.com/lmittmann/tint v1.1.2
-	github.com/puzpuzpuz/xsync/v4 v4.1.0
+	github.com/puzpuzpuz/xsync/v4 v4.2.0
 	github.com/spf13/cobra v1.10.1
 	golang.org/x/crypto v0.42.0
 	golang.org/x/sync v0.17.0
