@@ -8,7 +8,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/puzpuzpuz/xsync/v4 v4.2.0
 	github.com/spf13/cobra v1.10.1
-	golang.org/x/crypto v0.44.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/sync v0.18.0
 )
 
