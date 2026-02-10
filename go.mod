@@ -1,6 +1,6 @@
 module github.com/USA-RedDragon/relink
 
-go 1.24.6
+go 1.26.0
 
 require (
 	github.com/USA-RedDragon/configulator v0.0.0-20250409213831-8d29f1f162be
