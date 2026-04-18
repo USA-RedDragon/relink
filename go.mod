@@ -1,6 +1,6 @@
 module github.com/USA-RedDragon/relink
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/USA-RedDragon/configulator v0.0.0-20250409213831-8d29f1f162be
@@ -9,7 +9,7 @@ require (
 	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/crypto v0.48.0
-	golang.org/x/sync v0.19.0
+	golang.org/x/sync v0.20.0
 )
 
 require (
