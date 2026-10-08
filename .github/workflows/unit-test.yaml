@@ -9,8 +9,8 @@ on:
         required: false
         default: false
     secrets:
-      codecov_token:
-        description: 'Codecov token'
+      auto_commit_app_key:
+        description: 'Auto-commit GitHub App private key'
         required: false
       token:
         description: 'GitHub token'
@@ -21,8 +21,18 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        if: inputs.coverage
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.AUTO_COMMIT_APP_ID }}
+          private-key: ${{ secrets.auto_commit_app_key }}
+
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          token: ${{ steps.app-token.outputs.token || github.token }}
 
       - name: Set up Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -42,13 +52,17 @@ jobs:
       - name: Unit tests coverage
         if: inputs.coverage
         run: |
-          env CGO_ENABLED=0 go test -v ./... -coverprofile coverage.out -coverpkg=./... -covermode atomic
+          env CGO_ENABLED=0 go test -v ./... -coverprofile coverage.raw -coverpkg=./... -covermode atomic
+          grep -v -e '_configulator\.go:' coverage.raw > coverage.out
 
-      - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+      - name: Report coverage
         if: always() && inputs.coverage
+        uses: USA-RedDragon/reusable-actions/coverage@70c0fd29a3fb180e92e0b4e39c90982da4b5d07e # v2.0.26
         with:
-          token: ${{ secrets.codecov_token }}
-          fail_ci_if_error: true
+          file: coverage.out
+          token: ${{ steps.app-token.outputs.token }}
+          git-user-name: usa-reddragon-auto-commit-bot[bot]
+          git-user-email: usa-reddragon-auto-commit-bot[bot]@users.noreply.github.com
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && inputs.coverage
