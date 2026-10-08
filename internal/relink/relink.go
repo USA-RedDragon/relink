@@ -46,15 +46,15 @@ func Run(cfg *config.Config) error {
 
 	slog.Info("Walking source files")
 
-	totalFiles := 0
-	totalSize := uint64(0)
-	var completedFiles atomic.Uint64
-	var completedSize atomic.Uint64
+	totalFiles := int64(0)
+	totalSize := int64(0)
+	var completedFiles atomic.Int64
+	var completedSize atomic.Int64
 
 	for file := range Walk(absSource) {
 		totalFiles++
 		fileSize := file.Info.Size()
-		totalSize += uint64(fileSize)
+		totalSize += fileSize
 		go func() {
 			grp.Go(func() error {
 				defer func() { completedFiles.Add(1) }()
@@ -69,11 +69,11 @@ func Run(cfg *config.Config) error {
 					return fmt.Errorf("failed to check if file exists in cache: %w", err)
 				}
 				if exists {
-					completedSize.Add(uint64(fileSize))
+					completedSize.Add(fileSize)
 					return nil
 				}
 
-				readBytesChan := make(chan uint64)
+				readBytesChan := make(chan int64)
 				wg := errgroup.Group{}
 				wg.Go(func() error {
 					hash, err := HashFile(file.Path, cfg.BufferSize, readBytesChan)
@@ -87,24 +87,19 @@ func Run(cfg *config.Config) error {
 					return cc.Put(relative, hash)
 				})
 
-				for {
-					select {
-					case readBytes, ok := <-readBytesChan:
-						if !ok {
-							return wg.Wait()
-						}
-						completedSize.Add(readBytes)
-					}
+				for readBytes := range readBytesChan {
+					completedSize.Add(readBytes)
 				}
+				return wg.Wait()
 			})
 		}()
 	}
 
-	for int(completedFiles.Load()) < totalFiles {
-		slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
+	for completedFiles.Load() < totalFiles {
+		slog.Info("Hashing source files", "completed", completedFiles.Load(), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 		time.Sleep(time.Second)
 	}
-	slog.Info("Hashing source files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
+	slog.Info("Hashing source files", "completed", completedFiles.Load(), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 
 	err = grp.Wait()
 	if err != nil {
@@ -126,11 +121,11 @@ func Run(cfg *config.Config) error {
 			continue
 		}
 		fileSize := file.Info.Size()
-		totalSize += uint64(fileSize)
+		totalSize += fileSize
 		go func() {
 			grp.Go(func() error {
 				defer func() { completedFiles.Add(1) }()
-				readBytesChan := make(chan uint64)
+				readBytesChan := make(chan int64)
 				wg := errgroup.Group{}
 				wg.Go(func() error {
 					hash, err := HashFile(file.Path, cfg.BufferSize, readBytesChan)
@@ -158,24 +153,19 @@ func Run(cfg *config.Config) error {
 					return nil
 				})
 
-				for {
-					select {
-					case readBytes, ok := <-readBytesChan:
-						if !ok {
-							return wg.Wait()
-						}
-						completedSize.Add(readBytes)
-					}
+				for readBytes := range readBytesChan {
+					completedSize.Add(readBytes)
 				}
+				return wg.Wait()
 			})
 		}()
 	}
 
-	for int(completedFiles.Load()) < totalFiles {
-		slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
+	for completedFiles.Load() < totalFiles {
+		slog.Info("Hashing target files", "completed", completedFiles.Load(), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 		time.Sleep(time.Second)
 	}
-	slog.Info("Hashing target files", "completed", int(completedFiles.Load()), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
+	slog.Info("Hashing target files", "completed", completedFiles.Load(), "total", totalFiles, "completedSize", utils.HumanReadableSize(completedSize.Load()), "totalSize", utils.HumanReadableSize(totalSize))
 
 	err = grp.Wait()
 	if err != nil {

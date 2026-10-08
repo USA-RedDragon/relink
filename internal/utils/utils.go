@@ -2,12 +2,12 @@ package utils
 
 import "fmt"
 
-func HumanReadableSize(bytes uint64) string {
+func HumanReadableSize(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)
 	}
-	div, exp := uint64(unit), 0
+	div, exp := int64(unit), 0
 	for n := bytes / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++

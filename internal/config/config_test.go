@@ -9,6 +9,8 @@ import (
 	"github.com/USA-RedDragon/relink/internal/config"
 )
 
+const invalidValue = "invalid"
+
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
 	// Create a temporary directory for testing
@@ -38,7 +40,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid log level",
 			config: config.Config{
-				LogLevel:   "invalid",
+				LogLevel:   invalidValue,
 				Source:     tempDir,
 				Target:     filepath.Join(tempDir, "target"),
 				HashJobs:   4,
@@ -127,7 +129,7 @@ func TestConfig_Validate(t *testing.T) {
 				Target:     filepath.Join(tempDir, "target"),
 				HashJobs:   4,
 				BufferSize: 1024,
-				CacheType:  "invalid",
+				CacheType:  invalidValue,
 			},
 			wantErr: config.ErrInvalidCacheType,
 		},
@@ -167,7 +169,7 @@ func TestLogLevelConstants(t *testing.T) {
 		{"info level", config.LogLevelInfo, true},
 		{"warn level", config.LogLevelWarn, true},
 		{"error level", config.LogLevelError, true},
-		{"invalid level", "invalid", false},
+		{"invalid level", invalidValue, false},
 	}
 
 	for _, tt := range tests {

@@ -84,7 +84,7 @@ func TestRun(t *testing.T) {
 			t.Fatalf("Run failed: %v", err)
 		}
 
-		for file, _ := range files {
+		for file := range files {
 			sourcePath := filepath.Join(sourceDir, file)
 			targetPath := filepath.Join(targetDir, file)
 

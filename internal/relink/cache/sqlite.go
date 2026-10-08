@@ -1,10 +1,11 @@
 package cache
 
 import (
+	"context"
 	"database/sql"
 	"sync"
 
-	_ "github.com/glebarez/go-sqlite"
+	_ "github.com/glebarez/go-sqlite" // registers the sqlite driver
 )
 
 type SQLiteCache struct {
@@ -27,7 +28,7 @@ func NewSQLiteCache(path string) (*SQLiteCache, error) {
 }
 
 func migrate(db *sql.DB) error {
-	_, err := db.Exec(`
+	_, err := db.ExecContext(context.Background(), `
 	CREATE TABLE IF NOT EXISTS cache (
 		key TEXT PRIMARY KEY,
 		value BLOB
@@ -39,13 +40,13 @@ func migrate(db *sql.DB) error {
 func (s *SQLiteCache) Put(key string, value []byte) error {
 	s.writeMutex.Lock()
 	defer s.writeMutex.Unlock()
-	_, err := s.db.Exec("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", key, value)
+	_, err := s.db.ExecContext(context.Background(), "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", key, value)
 	return err
 }
 
 func (s *SQLiteCache) GetByHash(hash []byte) (string, error) {
 	var key string
-	err := s.db.QueryRow("SELECT key FROM cache WHERE value = ? LIMIT 1", hash).Scan(&key)
+	err := s.db.QueryRowContext(context.Background(), "SELECT key FROM cache WHERE value = ? LIMIT 1", hash).Scan(&key)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil
@@ -57,7 +58,7 @@ func (s *SQLiteCache) GetByHash(hash []byte) (string, error) {
 
 func (s *SQLiteCache) Exists(key string) (bool, error) {
 	var exists bool
-	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM cache WHERE key = ?)", key).Scan(&exists)
+	err := s.db.QueryRowContext(context.Background(), "SELECT EXISTS(SELECT 1 FROM cache WHERE key = ?)", key).Scan(&exists)
 	if err != nil {
 		return false, err
 	}
