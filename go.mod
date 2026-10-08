@@ -3,7 +3,7 @@ module github.com/USA-RedDragon/relink
 go 1.27
 
 require (
-	github.com/USA-RedDragon/configulator/v2 v2.3.0
+	github.com/USA-RedDragon/configulator/v2 v2.3.2
 	github.com/glebarez/go-sqlite v1.22.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/lmittmann/tint v1.2.1
