@@ -5,25 +5,28 @@
 package config
 
 import (
-	jsontext "encoding/json/jsontext"
-	v2 "encoding/json/v2"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
-	configulator "github.com/USA-RedDragon/configulator/v2"
-	cpflag "github.com/USA-RedDragon/configulator/v2/flags/pflag"
-	"github.com/spf13/pflag"
+	"math"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/USA-RedDragon/configulator/v2"
+	cpflag "github.com/USA-RedDragon/configulator/v2/flags/pflag"
+	"github.com/USA-RedDragon/configulator/v2/impl"
+	"github.com/spf13/pflag"
 )
 
 type configShadow struct {
-	LogLevel   *string `json:"log-level" toml:"log-level" yaml:"log-level"`
-	Source     *string `json:"source" toml:"source" yaml:"source"`
-	Target     *string `json:"target" toml:"target" yaml:"target"`
-	HashJobs   *int    `json:"hash-jobs" toml:"hash-jobs" yaml:"hash-jobs"`
+	LogLevel   *string `json:"log-level"   toml:"log-level"   yaml:"log-level"`
+	Source     *string `json:"source"      toml:"source"      yaml:"source"`
+	Target     *string `json:"target"      toml:"target"      yaml:"target"`
+	HashJobs   *int    `json:"hash-jobs"   toml:"hash-jobs"   yaml:"hash-jobs"`
 	BufferSize *int    `json:"buffer-size" toml:"buffer-size" yaml:"buffer-size"`
-	CacheType  *string `json:"cache-type" toml:"cache-type" yaml:"cache-type"`
-	CachePath  *string `json:"cache-path" toml:"cache-path" yaml:"cache-path"`
+	CacheType  *string `json:"cache-type"  toml:"cache-type"  yaml:"cache-type"`
+	CachePath  *string `json:"cache-path"  toml:"cache-path"  yaml:"cache-path"`
 }
 
 // ConfigSchema returns the generated schema for Config.
@@ -34,7 +37,8 @@ func ConfigSchema() *configulator.Schema[Config] {
 		DecodeFile:    configDecodeFile,
 	}
 }
-func configApplyDefaults(cfg *Config, sep string, set configulator.SetOrigin) error {
+
+func configApplyDefaults(cfg *Config, _ string, set configulator.SetOrigin) error {
 	cfg.LogLevel = LogLevel("info")
 	set("log-level", configulator.LayerDefault, "default tag")
 	cfg.HashJobs = 4
@@ -47,6 +51,7 @@ func configApplyDefaults(cfg *Config, sep string, set configulator.SetOrigin) er
 	set("cache-path", configulator.LayerDefault, "default tag")
 	return nil
 }
+
 func configDecodeFile(data []byte, u configulator.Unmarshal, cfg *Config, sep string, set configulator.SetOrigin, file string) error {
 	var sh configShadow
 	if err := u(data, &sh); err != nil {
@@ -57,7 +62,8 @@ func configDecodeFile(data []byte, u configulator.Unmarshal, cfg *Config, sep st
 	}
 	return sh.applyTo(cfg, sep, set, file)
 }
-func (s *configShadow) applyTo(cfg *Config, sep string, set configulator.SetOrigin, file string) error {
+
+func (s *configShadow) applyTo(cfg *Config, _ string, set configulator.SetOrigin, file string) error {
 	if s.LogLevel != nil {
 		cfg.LogLevel = LogLevel(*s.LogLevel)
 		set("log-level", configulator.LayerFile, file)
@@ -88,66 +94,53 @@ func (s *configShadow) applyTo(cfg *Config, sep string, set configulator.SetOrig
 	}
 	return nil
 }
+
 func configApplyEnv(cfg *Config, ec configulator.EnvContext, set configulator.SetOrigin) error {
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "log-level"); true {
-		if v, ok := ec.Getenv(n); ok {
-			cfg.LogLevel = LogLevel(v)
-			set("log-level", configulator.LayerEnv, n)
-		}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "log-level"); ok {
+		cfg.LogLevel = LogLevel(v)
+		set("log-level", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "source"); true {
-		if v, ok := ec.Getenv(n); ok {
-			cfg.Source = v
-			set("source", configulator.LayerEnv, n)
-		}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "source"); ok {
+		cfg.Source = v
+		set("source", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "target"); true {
-		if v, ok := ec.Getenv(n); ok {
-			cfg.Target = v
-			set("target", configulator.LayerEnv, n)
-		}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "target"); ok {
+		cfg.Target = v
+		set("target", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "hash-jobs"); true {
-		if v, ok := ec.Getenv(n); ok {
-			p, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return &configulator.ParseError{
-					Err:    err,
-					Path:   "hash-jobs",
-					Source: n,
-					Value:  v,
-				}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "hash-jobs"); ok {
+		p, err := strconv.ParseInt(v, 10, strconv.IntSize)
+		if err != nil {
+			return &configulator.ParseError{
+				Err:    err,
+				Path:   "hash-jobs",
+				Source: n,
+				Value:  v,
 			}
-			cfg.HashJobs = int(p)
-			set("hash-jobs", configulator.LayerEnv, n)
 		}
+		cfg.HashJobs = int(p)
+		set("hash-jobs", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "buffer-size"); true {
-		if v, ok := ec.Getenv(n); ok {
-			p, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return &configulator.ParseError{
-					Err:    err,
-					Path:   "buffer-size",
-					Source: n,
-					Value:  v,
-				}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "buffer-size"); ok {
+		p, err := strconv.ParseInt(v, 10, strconv.IntSize)
+		if err != nil {
+			return &configulator.ParseError{
+				Err:    err,
+				Path:   "buffer-size",
+				Source: n,
+				Value:  v,
 			}
-			cfg.BufferSize = int(p)
-			set("buffer-size", configulator.LayerEnv, n)
 		}
+		cfg.BufferSize = int(p)
+		set("buffer-size", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "cache-type"); true {
-		if v, ok := ec.Getenv(n); ok {
-			cfg.CacheType = CacheType(v)
-			set("cache-type", configulator.LayerEnv, n)
-		}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "cache-type"); ok {
+		cfg.CacheType = CacheType(v)
+		set("cache-type", configulator.LayerEnv, n)
 	}
-	if n := configulator.EnvName(ec.Opts.Prefix, ec.Opts.Separator, "cache-path"); true {
-		if v, ok := ec.Getenv(n); ok {
-			cfg.CachePath = v
-			set("cache-path", configulator.LayerEnv, n)
-		}
+	if n, v, ok := impl.LookupEnv(ec.Getenv, ec.Opts.Prefix, ec.Opts.Separator, "cache-path"); ok {
+		cfg.CachePath = v
+		set("cache-path", configulator.LayerEnv, n)
 	}
 	return nil
 }
@@ -159,10 +152,25 @@ func ConfigPFlagHooks() cpflag.Hooks[Config] {
 		Register: configRegisterPFlags,
 	}
 }
-func configRegisterPFlags(fs *pflag.FlagSet, o *cpflag.Options) error {
-	names := []string{strings.Join([]string{"log-level"}, o.Separator), strings.Join([]string{"source"}, o.Separator), strings.Join([]string{"target"}, o.Separator), strings.Join([]string{"hash-jobs"}, o.Separator), strings.Join([]string{"buffer-size"}, o.Separator), strings.Join([]string{"cache-type"}, o.Separator), strings.Join([]string{"cache-path"}, o.Separator)}
+
+func configRegisterPFlags(fs *pflag.FlagSet, _ *cpflag.Options) error {
+	names := []string{
+		"log-level",
+		"source",
+		"target",
+		"hash-jobs",
+		"buffer-size",
+		"cache-type",
+		"cache-path",
+	}
 	for i, name := range names {
-		if fs.Lookup(name) != nil || slices.Contains(names[:i], name) {
+		if f := fs.Lookup(name); f != nil {
+			return &configulator.FlagConflictError{
+				Existing: f.Name,
+				Flag:     name,
+			}
+		}
+		if slices.Contains(names[:i], name) {
 			return &configulator.FlagConflictError{
 				Existing: name,
 				Flag:     name,
@@ -172,14 +180,15 @@ func configRegisterPFlags(fs *pflag.FlagSet, o *cpflag.Options) error {
 	fs.String(names[0], "info", "Logging level for the application. One of debug, info, warn, or error")
 	fs.String(names[1], "", "Source directory to read the files from")
 	fs.String(names[2], "", "Target directory to write the relinked files to")
-	fs.Int(names[3], 4, "Number of jobs to use for hashing files")
-	fs.Int(names[4], 4096, "Buffer size for file checksum operations in bytes")
+	fs.Var(impl.NewInt(4), names[3], "Number of jobs to use for hashing files")
+	fs.Var(impl.NewInt(4096), names[4], "Buffer size for file checksum operations in bytes")
 	fs.String(names[5], "memory", "Cache type to use for storing file hashes. One of memory or sqlite")
 	fs.String(names[6], ":memory:", "Path to the SQLite database file for caching. Only used if cache-type is sqlite")
 	return nil
 }
-func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep string, set configulator.SetOrigin) error {
-	if n := strings.Join([]string{"log-level"}, o.Separator); fs.Changed(n) {
+
+func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, _ *cpflag.Options, _ string, set configulator.SetOrigin) error {
+	if n := "log-level"; fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -191,7 +200,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.LogLevel = LogLevel(v)
 		set("log-level", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"source"}, o.Separator); fs.Changed(n) {
+	if n := "source"; fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -203,7 +212,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.Source = v
 		set("source", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"target"}, o.Separator); fs.Changed(n) {
+	if n := "target"; fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -215,7 +224,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.Target = v
 		set("target", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"hash-jobs"}, o.Separator); fs.Changed(n) {
+	if n := "hash-jobs"; fs.Changed(n) {
 		v, err := fs.GetInt(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -227,7 +236,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.HashJobs = v
 		set("hash-jobs", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"buffer-size"}, o.Separator); fs.Changed(n) {
+	if n := "buffer-size"; fs.Changed(n) {
 		v, err := fs.GetInt(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -239,7 +248,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.BufferSize = v
 		set("buffer-size", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"cache-type"}, o.Separator); fs.Changed(n) {
+	if n := "cache-type"; fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -251,7 +260,7 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 		cfg.CacheType = CacheType(v)
 		set("cache-type", configulator.LayerCLI, "--"+n)
 	}
-	if n := strings.Join([]string{"cache-path"}, o.Separator); fs.Changed(n) {
+	if n := "cache-path"; fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
 			return &configulator.ParseError{
@@ -265,35 +274,36 @@ func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep st
 	}
 	return nil
 }
+
 func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	tok, err := dec.ReadToken()
 	if err != nil {
 		return err
 	}
-	if tok.Kind() != '{' {
-		return fmt.Errorf("expected object, got %v", tok.Kind())
+	if tok.Kind() != jsontext.KindBeginObject {
+		return fmt.Errorf("expected an object, got %v", tok.Kind())
 	}
 	for {
 		tok, err := dec.ReadToken()
 		if err != nil {
 			return err
 		}
-		if tok.Kind() == '}' {
+		if tok.Kind() == jsontext.KindEndObject {
 			return nil
 		}
-		switch tok.String() {
+		switch key := tok.String(); key {
 		case "log-level":
 			v, err := dec.ReadToken()
 			if err != nil {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '"':
+			case jsontext.KindNull:
+			case jsontext.KindString:
 				str := v.String()
 				s.LogLevel = &str
 			default:
-				return fmt.Errorf("log-level: expected a string, got %v", v.Kind())
+				return configJSONError("log-level", v, fmt.Errorf("expected a string, got %v", v.Kind()))
 			}
 		case "source":
 			v, err := dec.ReadToken()
@@ -301,12 +311,12 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '"':
+			case jsontext.KindNull:
+			case jsontext.KindString:
 				str := v.String()
 				s.Source = &str
 			default:
-				return fmt.Errorf("source: expected a string, got %v", v.Kind())
+				return configJSONError("source", v, fmt.Errorf("expected a string, got %v", v.Kind()))
 			}
 		case "target":
 			v, err := dec.ReadToken()
@@ -314,12 +324,12 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '"':
+			case jsontext.KindNull:
+			case jsontext.KindString:
 				str := v.String()
 				s.Target = &str
 			default:
-				return fmt.Errorf("target: expected a string, got %v", v.Kind())
+				return configJSONError("target", v, fmt.Errorf("expected a string, got %v", v.Kind()))
 			}
 		case "hash-jobs":
 			v, err := dec.ReadToken()
@@ -327,16 +337,19 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '0':
-				num, err := v.Int()
+			case jsontext.KindNull:
+			case jsontext.KindNumber:
+				raw, err := v.Int()
 				if err != nil {
-					return err
+					return configJSONError("hash-jobs", v, err)
 				}
-				val := int(num)
-				s.HashJobs = &val
+				if raw < math.MinInt || raw > math.MaxInt {
+					return configJSONError("hash-jobs", v, fmt.Errorf("%d overflows int", raw))
+				}
+				num := int(raw)
+				s.HashJobs = &num
 			default:
-				return fmt.Errorf("hash-jobs: expected a number, got %v", v.Kind())
+				return configJSONError("hash-jobs", v, fmt.Errorf("expected a number, got %v", v.Kind()))
 			}
 		case "buffer-size":
 			v, err := dec.ReadToken()
@@ -344,16 +357,19 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '0':
-				num, err := v.Int()
+			case jsontext.KindNull:
+			case jsontext.KindNumber:
+				raw, err := v.Int()
 				if err != nil {
-					return err
+					return configJSONError("buffer-size", v, err)
 				}
-				val := int(num)
-				s.BufferSize = &val
+				if raw < math.MinInt || raw > math.MaxInt {
+					return configJSONError("buffer-size", v, fmt.Errorf("%d overflows int", raw))
+				}
+				num := int(raw)
+				s.BufferSize = &num
 			default:
-				return fmt.Errorf("buffer-size: expected a number, got %v", v.Kind())
+				return configJSONError("buffer-size", v, fmt.Errorf("expected a number, got %v", v.Kind()))
 			}
 		case "cache-type":
 			v, err := dec.ReadToken()
@@ -361,12 +377,12 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '"':
+			case jsontext.KindNull:
+			case jsontext.KindString:
 				str := v.String()
 				s.CacheType = &str
 			default:
-				return fmt.Errorf("cache-type: expected a string, got %v", v.Kind())
+				return configJSONError("cache-type", v, fmt.Errorf("expected a string, got %v", v.Kind()))
 			}
 		case "cache-path":
 			v, err := dec.ReadToken()
@@ -374,32 +390,53 @@ func (s *configShadow) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 				return err
 			}
 			switch v.Kind() {
-			case 'n':
-			case '"':
+			case jsontext.KindNull:
+			case jsontext.KindString:
 				str := v.String()
 				s.CachePath = &str
 			default:
-				return fmt.Errorf("cache-path: expected a string, got %v", v.Kind())
+				return configJSONError("cache-path", v, fmt.Errorf("expected a string, got %v", v.Kind()))
 			}
 		default:
-			return fmt.Errorf("unknown key %q", tok.String())
+			if reject, _ := json.GetOption(dec.Options(), json.RejectUnknownMembers); reject {
+				return &configulator.UnknownKeyError{Path: configQuoteKey(key)}
+			}
+			if err := dec.SkipValue(); err != nil {
+				return err
+			}
 		}
 	}
 }
 
-var _ v2.UnmarshalerFrom = (*configShadow)(nil)
+var _ json.UnmarshalerFrom = (*configShadow)(nil)
+
+// configJSONError returns a ParseError for the JSON token v at path.
+func configJSONError(path string, v jsontext.Token, err error) error {
+	return &configulator.ParseError{
+		Err:   err,
+		Path:  path,
+		Value: v.String(),
+	}
+}
 
 // PrintConfig renders every field as "path = value" lines, redacting
 // fields tagged secret:"true". The origin Report holds no values,
 // so this is the only place redaction happens.
-func (c *Config) PrintConfig() string {
+func (c Config) PrintConfig() string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("log-level = %v\n", c.LogLevel))
-	b.WriteString(fmt.Sprintf("source = %v\n", c.Source))
-	b.WriteString(fmt.Sprintf("target = %v\n", c.Target))
-	b.WriteString(fmt.Sprintf("hash-jobs = %v\n", c.HashJobs))
-	b.WriteString(fmt.Sprintf("buffer-size = %v\n", c.BufferSize))
-	b.WriteString(fmt.Sprintf("cache-type = %v\n", c.CacheType))
-	b.WriteString(fmt.Sprintf("cache-path = %v\n", c.CachePath))
+	fmt.Fprintf(&b, "log-level = %v\n", c.LogLevel)
+	fmt.Fprintf(&b, "source = %v\n", c.Source)
+	fmt.Fprintf(&b, "target = %v\n", c.Target)
+	fmt.Fprintf(&b, "hash-jobs = %v\n", c.HashJobs)
+	fmt.Fprintf(&b, "buffer-size = %v\n", c.BufferSize)
+	fmt.Fprintf(&b, "cache-type = %v\n", c.CacheType)
+	fmt.Fprintf(&b, "cache-path = %v\n", c.CachePath)
 	return b.String()
+}
+
+func configQuoteKey(k string) string {
+	if strings.ContainsAny(k, ".[") {
+		return "\"" + strings.NewReplacer("\\", "\\\\", "\"", "\\\"").Replace(k) + "\""
+	}
+	return k
 }
