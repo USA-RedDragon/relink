@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/USA-RedDragon/configulator"
+	"github.com/USA-RedDragon/configulator/v2"
 	"github.com/USA-RedDragon/relink/internal/config"
 	"github.com/USA-RedDragon/relink/internal/relink"
 	"github.com/lmittmann/tint"
