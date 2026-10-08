@@ -1,0 +1,15 @@
+# Sample configuration for Config.
+# Logging level for the application. One of debug, info, warn, or error
+log-level: "info"
+# Source directory to read the files from
+# source: ""
+# Target directory to write the relinked files to
+# target: ""
+# Number of jobs to use for hashing files
+hash-jobs: 4
+# Buffer size for file checksum operations in bytes
+buffer-size: 4096
+# Cache type to use for storing file hashes. One of memory or sqlite
+cache-type: "memory"
+# Path to the SQLite database file for caching. Only used if cache-type is sqlite
+cache-path: ":memory:"
