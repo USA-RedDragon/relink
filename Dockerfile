@@ -1,3 +1,4 @@
 FROM scratch
-COPY relink /
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/relink /
 ENTRYPOINT ["/relink"]
