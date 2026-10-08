@@ -1,0 +1,12 @@
+cmd/bufferbench.go	57	0
+cmd/root.go	26	0
+internal/config/config.go	19	18
+internal/relink/atomic.go	9	8
+internal/relink/cache/memory.go	15	14
+internal/relink/cache/sqlite.go	26	0
+internal/relink/hash.go	24	20
+internal/relink/relink.go	155	131
+internal/relink/temp.go	7	6
+internal/relink/walk.go	18	13
+internal/utils/utils.go	9	3
+main.go	22	0
