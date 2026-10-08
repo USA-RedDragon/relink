@@ -11,6 +11,7 @@ import (
 	configulator "github.com/USA-RedDragon/configulator/v2"
 	cpflag "github.com/USA-RedDragon/configulator/v2/flags/pflag"
 	"github.com/spf13/pflag"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -33,7 +34,7 @@ func ConfigSchema() *configulator.Schema[Config] {
 		DecodeFile:    configDecodeFile,
 	}
 }
-func configApplyDefaults(cfg *Config, set configulator.SetOrigin) error {
+func configApplyDefaults(cfg *Config, sep string, set configulator.SetOrigin) error {
 	cfg.LogLevel = LogLevel("info")
 	set("log-level", configulator.LayerDefault, "default tag")
 	cfg.HashJobs = 4
@@ -46,7 +47,7 @@ func configApplyDefaults(cfg *Config, set configulator.SetOrigin) error {
 	set("cache-path", configulator.LayerDefault, "default tag")
 	return nil
 }
-func configDecodeFile(data []byte, u configulator.Unmarshal, cfg *Config, set configulator.SetOrigin, file string) error {
+func configDecodeFile(data []byte, u configulator.Unmarshal, cfg *Config, sep string, set configulator.SetOrigin, file string) error {
 	var sh configShadow
 	if err := u(data, &sh); err != nil {
 		return &configulator.DecodeError{
@@ -54,9 +55,9 @@ func configDecodeFile(data []byte, u configulator.Unmarshal, cfg *Config, set co
 			Path: file,
 		}
 	}
-	return sh.applyTo(cfg, set, file)
+	return sh.applyTo(cfg, sep, set, file)
 }
-func (s *configShadow) applyTo(cfg *Config, set configulator.SetOrigin, file string) error {
+func (s *configShadow) applyTo(cfg *Config, sep string, set configulator.SetOrigin, file string) error {
 	if s.LogLevel != nil {
 		cfg.LogLevel = LogLevel(*s.LogLevel)
 		set("log-level", configulator.LayerFile, file)
@@ -159,21 +160,25 @@ func ConfigPFlagHooks() cpflag.Hooks[Config] {
 	}
 }
 func configRegisterPFlags(fs *pflag.FlagSet, o *cpflag.Options) error {
-	for _, name := range []string{strings.Join([]string{"log-level"}, o.Separator), strings.Join([]string{"source"}, o.Separator), strings.Join([]string{"target"}, o.Separator), strings.Join([]string{"hash-jobs"}, o.Separator), strings.Join([]string{"buffer-size"}, o.Separator), strings.Join([]string{"cache-type"}, o.Separator), strings.Join([]string{"cache-path"}, o.Separator)} {
-		if fs.Lookup(name) != nil {
-			return fmt.Errorf("flag --%s already registered on this FlagSet", name)
+	names := []string{strings.Join([]string{"log-level"}, o.Separator), strings.Join([]string{"source"}, o.Separator), strings.Join([]string{"target"}, o.Separator), strings.Join([]string{"hash-jobs"}, o.Separator), strings.Join([]string{"buffer-size"}, o.Separator), strings.Join([]string{"cache-type"}, o.Separator), strings.Join([]string{"cache-path"}, o.Separator)}
+	for i, name := range names {
+		if fs.Lookup(name) != nil || slices.Contains(names[:i], name) {
+			return &configulator.FlagConflictError{
+				Existing: name,
+				Flag:     name,
+			}
 		}
 	}
-	fs.String(strings.Join([]string{"log-level"}, o.Separator), "info", "Logging level for the application. One of debug, info, warn, or error")
-	fs.String(strings.Join([]string{"source"}, o.Separator), "", "Source directory to read the files from")
-	fs.String(strings.Join([]string{"target"}, o.Separator), "", "Target directory to write the relinked files to")
-	fs.Int(strings.Join([]string{"hash-jobs"}, o.Separator), 4, "Number of jobs to use for hashing files")
-	fs.Int(strings.Join([]string{"buffer-size"}, o.Separator), 4096, "Buffer size for file checksum operations in bytes")
-	fs.String(strings.Join([]string{"cache-type"}, o.Separator), "memory", "Cache type to use for storing file hashes. One of memory or sqlite")
-	fs.String(strings.Join([]string{"cache-path"}, o.Separator), ":memory:", "Path to the SQLite database file for caching. Only used if cache-type is sqlite")
+	fs.String(names[0], "info", "Logging level for the application. One of debug, info, warn, or error")
+	fs.String(names[1], "", "Source directory to read the files from")
+	fs.String(names[2], "", "Target directory to write the relinked files to")
+	fs.Int(names[3], 4, "Number of jobs to use for hashing files")
+	fs.Int(names[4], 4096, "Buffer size for file checksum operations in bytes")
+	fs.String(names[5], "memory", "Cache type to use for storing file hashes. One of memory or sqlite")
+	fs.String(names[6], ":memory:", "Path to the SQLite database file for caching. Only used if cache-type is sqlite")
 	return nil
 }
-func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, set configulator.SetOrigin) error {
+func configApplyPFlags(cfg *Config, fs *pflag.FlagSet, o *cpflag.Options, sep string, set configulator.SetOrigin) error {
 	if n := strings.Join([]string{"log-level"}, o.Separator); fs.Changed(n) {
 		v, err := fs.GetString(n)
 		if err != nil {
